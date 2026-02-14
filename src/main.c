@@ -1,37 +1,25 @@
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_error.h>
-#include <SDL3/SDL_events.h>
-#include <SDL3/SDL_init.h>
-#include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_main.h>
-#include <SDL3/SDL_mouse.h>
-#include <SDL3/SDL_oldnames.h>
-#include <SDL3/SDL_pixels.h>
-#include <SDL3/SDL_rect.h>
-#include <SDL3/SDL_render.h>
-#include <SDL3/SDL_video.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+
+#include "../include/game.h"
+#include "../include/pieces.h"
 
 #define HEIGHT 800
 #define WIDTH 800
 #define SQUARE_SIZE 100
 
-typedef struct Piece {
-  int x;
-  int y;
-  int (*draw)(int, int);
-} Piece;
+const int FPS = 60;
+const int FRAME_DELAY = 1000 / FPS;
 
-typedef struct {
-  SDL_Window *window;
-  SDL_Renderer *renderer;
-} Game;
+Uint64 framestart;
+int frametime;
 
 // Declaration
 SDL_AppResult init_game(Game *game);
-bool draw(SDL_Renderer *renderer);
+bool draw(Game *game);
 bool handle_click(SDL_Event *events);
 
 int main() {
@@ -39,16 +27,23 @@ int main() {
   Game *game = malloc(sizeof(Game));
   game->renderer = NULL;
   game->window = NULL;
+  game->current_scene = PLAYING;
+  game->selected_index = -1;
+  game->running = true;
 
   init_game(game);
 
   bool running = true;
   SDL_Event event;
 
-  while (running) {
+  init_board(game);
+
+  while (game->running) {
+    framestart = SDL_GetTicks();
+
     while (SDL_PollEvent(&event)) {
       if (event.type == SDL_EVENT_QUIT) {
-        running = false;
+        game->running = false;
       }
 
       bool is_keypress = event.type == SDL_EVENT_KEY_DOWN;
@@ -56,20 +51,28 @@ int main() {
           event.key.key == SDLK_ESCAPE || event.key.key == SDLK_Q;
 
       if (is_keypress && is_required_key) {
-        running = false;
+        game->running = false;
       }
       if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
         handle_click(&event);
       }
     }
-    SDL_SetRenderDrawColor(game->renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_SetRenderDrawColor(game->renderer, 128, 128, 128, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(game->renderer);
 
-    draw(game->renderer);
+    draw(game);
 
     SDL_RenderPresent(game->renderer);
+
+    frametime = SDL_GetTicks() - framestart;
+
+    if (frametime < FRAME_DELAY) {
+      (SDL_Delay(FRAME_DELAY - frametime));
+    }
   }
 
+  SDL_DestroyRenderer(game->renderer);
+  SDL_DestroyWindow(game->window);
   free(game);
   return EXIT_SUCCESS;
 }
@@ -89,10 +92,15 @@ SDL_AppResult init_game(Game *game) {
   return SDL_APP_CONTINUE;
 }
 
+// Draw helpers
 bool draw_board(SDL_Renderer *renderer);
-bool draw(SDL_Renderer *renderer) {
 
-  draw_board(renderer);
+// Main draw Function
+bool draw(Game *game) {
+
+  draw_board(game->renderer);
+  draw_pieces(game);
+
   return true;
 }
 
