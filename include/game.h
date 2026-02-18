@@ -21,16 +21,37 @@ typedef struct Piece {
   PieceColor color;
   PiecesType type;
   SDL_Texture *sprite;
+  bool moved;
+  bool isAlive;
+  bool isSelected;
+  bool can_enpassant;
+
 } Piece;
 
-typedef enum { MENU, PLAYING, PIECE_SELECTED, GAME_OVER } Scene;
+typedef enum { MENU, PLAYING, GAME_OVER } Scene;
+typedef enum MoveType { HAS_ENEMY, HAS_SELF, HAS_NONE } MoveType;
+
+typedef struct Move {
+  int x;
+  int y;
+  MoveType spot;
+} Move;
 
 typedef struct {
+  // SDL
   SDL_Window *window;
   SDL_Renderer *renderer;
+
   Piece board[64];
+
+  // Game States
+  PieceColor turn;
   Scene current_scene;
-  int selected_index;
+  bool pending_click;
+  Piece *selected_piece;
+  Move **possible_moves;
+  int clicked_square_x;
+  int clicked_square_y;
   bool running;
 } Game;
 

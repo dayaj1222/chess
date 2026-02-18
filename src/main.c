@@ -1,11 +1,16 @@
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
 #include <SDL3/SDL_main.h>
+#include <SDL3/SDL_mouse.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include "../include/game.h"
+#include "../include/input.h"
 #include "../include/pieces.h"
+#include "../include/renderer.h"
+#include "../include/update.h"
 
 #define HEIGHT 800
 #define WIDTH 800
@@ -20,20 +25,22 @@ int frametime;
 // Declaration
 SDL_AppResult init_game(Game *game);
 bool draw(Game *game);
-bool handle_click(SDL_Event *events);
+void handle_click(Game *game, SDL_Event *event);
 
 int main() {
-
   Game *game = malloc(sizeof(Game));
+  game->possible_moves = NULL;
   game->renderer = NULL;
   game->window = NULL;
   game->current_scene = PLAYING;
-  game->selected_index = -1;
   game->running = true;
+  game->pending_click = false;
+  game->clicked_square_x = -1;
+  game->clicked_square_y = -1;
+  game->selected_piece = NULL;
+  game->turn = WHITE;
 
   init_game(game);
-
-  bool running = true;
   SDL_Event event;
 
   init_board(game);
@@ -54,12 +61,13 @@ int main() {
         game->running = false;
       }
       if (event.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-        handle_click(&event);
+        handle_click(game, &event);
       }
     }
     SDL_SetRenderDrawColor(game->renderer, 128, 128, 128, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(game->renderer);
 
+    update_game(game);
     draw(game);
 
     SDL_RenderPresent(game->renderer);
@@ -74,6 +82,7 @@ int main() {
   SDL_DestroyRenderer(game->renderer);
   SDL_DestroyWindow(game->window);
   free(game);
+  free(game->possible_moves);
   return EXIT_SUCCESS;
 }
 
@@ -89,52 +98,6 @@ SDL_AppResult init_game(Game *game) {
     printf("Couldn't Create Window/Renderer: %s", SDL_GetError());
     return SDL_APP_FAILURE;
   }
+  SDL_SetRenderDrawBlendMode(game->renderer, SDL_BLENDMODE_BLEND);
   return SDL_APP_CONTINUE;
-}
-
-// Draw helpers
-bool draw_board(SDL_Renderer *renderer);
-
-// Main draw Function
-bool draw(Game *game) {
-
-  draw_board(game->renderer);
-  draw_pieces(game);
-
-  return true;
-}
-
-bool draw_board(SDL_Renderer *renderer) {
-  SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
-
-  SDL_FRect square = {0, 0, SQUARE_SIZE, SQUARE_SIZE};
-
-  for (int i = 0; i < 8; i++) {
-    if (i % 2 == 0) {
-      for (int j = 0; j < 8; j++) {
-        SDL_RenderFillRect(renderer, &square);
-        square.x += 200;
-      }
-    } else {
-      square.x = 100;
-      for (int j = 0; j < 8; j++) {
-        SDL_RenderFillRect(renderer, &square);
-        square.x += 200;
-      }
-    }
-    square.x = 0;
-    square.y += 100;
-  }
-  return true;
-}
-
-bool handle_click(SDL_Event *event) {
-  int x = event->button.x;
-  int y = event->button.y;
-  int button = event->button.button;
-
-  if (button == SDL_BUTTON_LEFT) {
-    printf("x: %d , y: %d", x, y);
-  }
-  return true;
 }

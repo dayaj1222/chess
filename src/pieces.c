@@ -17,11 +17,16 @@ void draw_piece(Piece *board, SDL_Renderer *renderer);
 // Definition
 void init_board(Game *game) {
   for (int i = 0; i < 64; i++) {
-    game->board[i] = (Piece){.x = i % 8,
-                             .y = i / 8,
-                             .sprite = NULL,
-                             .type = NO_TYPE,
-                             .color = NO_COLOR};
+    game->board[i] = (Piece){
+        .x = i % 8,
+        .y = i / 8,
+        .sprite = NULL,
+        .type = NO_TYPE,
+        .color = NO_COLOR,
+        .isSelected = false,
+        .isAlive = false,
+        .moved = false,
+    };
   }
 
   SDL_Texture *b_pawn = load_texture(game->renderer, "../sprites/pawn-b.bmp");
@@ -55,24 +60,36 @@ void init_board(Game *game) {
     game->board[i].type = types[i];
     game->board[i].color = BLACK;
     game->board[i].y = 0;
+    game->board[i].isAlive = true;
+    game->board[i].moved = false;
+    game->board[i].isSelected = false;
 
     // Black Pawns
     game->board[i + 8].sprite = b_pawn;
     game->board[i + 8].type = PAWN;
     game->board[i + 8].color = BLACK;
     game->board[i + 8].y = 1;
+    game->board[i + 8].isAlive = true;
+    game->board[i + 8].moved = false;
+    game->board[i].isSelected = false;
 
     // White Pawnn
     game->board[i + 48].sprite = w_pawn;
     game->board[i + 48].type = PAWN;
     game->board[i + 48].color = WHITE;
     game->board[i + 48].y = 6;
+    game->board[i + 48].isAlive = true;
+    game->board[i + 48].moved = false;
+    game->board[i].isSelected = false;
 
     // White Back Rank
     game->board[i + 56].sprite = white_t[i];
     game->board[i + 56].type = types[i];
     game->board[i + 56].color = WHITE;
     game->board[i + 56].y = 7;
+    game->board[i + 56].isAlive = true;
+    game->board[i + 56].moved = false;
+    game->board[i].isSelected = false;
   }
 }
 
