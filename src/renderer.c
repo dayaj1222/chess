@@ -95,24 +95,22 @@ void init_board(Game *game) {
   /* Load textures */
   SDL_Texture *textures[2][6];
 
-  textures[BLACK][PAWN] = load_texture(game->renderer, "../sprites/pawn-b.bmp");
-  textures[WHITE][PAWN] = load_texture(game->renderer, "../sprites/pawn-w.bmp");
-  textures[BLACK][ROOK] = load_texture(game->renderer, "../sprites/rook-b.bmp");
-  textures[WHITE][ROOK] = load_texture(game->renderer, "../sprites/rook-w.bmp");
+  textures[BLACK][PAWN] = load_texture(game->renderer, "sprites/pawn-b.bmp");
+  textures[WHITE][PAWN] = load_texture(game->renderer, "sprites/pawn-w.bmp");
+  textures[BLACK][ROOK] = load_texture(game->renderer, "sprites/rook-b.bmp");
+  textures[WHITE][ROOK] = load_texture(game->renderer, "sprites/rook-w.bmp");
   textures[BLACK][KNIGHT] =
-      load_texture(game->renderer, "../sprites/knight-b.bmp");
+      load_texture(game->renderer, "sprites/knight-b.bmp");
   textures[WHITE][KNIGHT] =
-      load_texture(game->renderer, "../sprites/knight-w.bmp");
+      load_texture(game->renderer, "sprites/knight-w.bmp");
   textures[BLACK][BISHOP] =
-      load_texture(game->renderer, "../sprites/bishop-b.bmp");
+      load_texture(game->renderer, "sprites/bishop-b.bmp");
   textures[WHITE][BISHOP] =
-      load_texture(game->renderer, "../sprites/bishop-w.bmp");
-  textures[BLACK][QUEEN] =
-      load_texture(game->renderer, "../sprites/queen-b.bmp");
-  textures[WHITE][QUEEN] =
-      load_texture(game->renderer, "../sprites/queen-w.bmp");
-  textures[BLACK][KING] = load_texture(game->renderer, "../sprites/king-b.bmp");
-  textures[WHITE][KING] = load_texture(game->renderer, "../sprites/king-w.bmp");
+      load_texture(game->renderer, "sprites/bishop-w.bmp");
+  textures[BLACK][QUEEN] = load_texture(game->renderer, "sprites/queen-b.bmp");
+  textures[WHITE][QUEEN] = load_texture(game->renderer, "sprites/queen-w.bmp");
+  textures[BLACK][KING] = load_texture(game->renderer, "sprites/king-b.bmp");
+  textures[WHITE][KING] = load_texture(game->renderer, "sprites/king-w.bmp");
 
   PiecesType back_rank[BOARD_SIZE] = {ROOK, KNIGHT, BISHOP, QUEEN,
                                       KING, BISHOP, KNIGHT, ROOK};

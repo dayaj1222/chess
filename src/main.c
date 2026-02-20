@@ -9,7 +9,7 @@
 #include "../include/game.h"
 #include "../include/input.h"
 #include "../include/renderer.h"
-#include "../include/update.h"
+#include "../include/update/update.h"
 
 #define WIDTH 800
 #define HEIGHT 800
