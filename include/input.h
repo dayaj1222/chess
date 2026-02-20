@@ -5,4 +5,5 @@
 #include <SDL3/SDL_events.h>
 
 void handle_click(Game *game, SDL_Event *event);
-#endif // !INPUT_H
+
+#endif
