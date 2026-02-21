@@ -1,5 +1,4 @@
 #include "../../include/update/move_gen.h"
-#include "../../include/update/move_exec.h"
 #include "../../include/update/rules.h"
 #include <stdbool.h>
 #include <stdlib.h>
@@ -45,9 +44,11 @@ bool is_valid_move(int x, int y, Move **possible_moves) {
   return false;
 }
 
-Move **get_moves_rbq(Game *game, Piece *piece, bool x_ray_king) {
+Move **get_moves_rbq(Game *game, Piece *piece) {
+
   const int (*dirs)[2];
   int dir_count;
+
   switch (piece->type) {
   case ROOK:
     dirs = DIR_ROOK;
@@ -61,34 +62,28 @@ Move **get_moves_rbq(Game *game, Piece *piece, bool x_ray_king) {
     dirs = DIR_QUEEN;
     dir_count = 8;
     break;
-  case KING:
-    dirs = DIR_QUEEN;
-    dir_count = 8;
-    break;
   default:
     return NULL;
   }
+
   Move **moves = alloc_moves();
   int j = 0;
+
   for (int d = 0; d < dir_count; d++) {
     for (int dist = 1; dist < 8; dist++) {
       int nx = piece->x + dirs[d][0] * dist;
       int ny = piece->y + dirs[d][1] * dist;
+
       if (nx < 0 || nx >= 8 || ny < 0 || ny >= 8)
         break;
 
-      if (piece->type == KING && x_ray_king == false &&
-          is_square_attacked(game, nx, ny, piece->color))
-        break;
-
       Piece *target = &game->board[ny * 8 + nx];
+
       Move *m = malloc(sizeof(Move));
       m->x = nx;
       m->y = ny;
+
       if (target->type == NO_TYPE) {
-        m->spot = HAS_NONE;
-        moves[j++] = m;
-      } else if (x_ray_king && target->type == KING) {
         m->spot = HAS_NONE;
         moves[j++] = m;
       } else {
@@ -96,10 +91,82 @@ Move **get_moves_rbq(Game *game, Piece *piece, bool x_ray_king) {
         moves[j++] = m;
         break;
       }
-      if (piece->type == KING)
-        break;
     }
   }
+
+  return moves;
+}
+
+Move **get_king_moves(Game *game, Piece *piece, bool x_ray_king) {
+  const int (*dirs)[2] = DIR_QUEEN;
+  Move **moves = alloc_moves();
+  int j = 0;
+
+  for (int d = 0; d < 8; d++) {
+    int nx = piece->x + dirs[d][0];
+    int ny = piece->y + dirs[d][1];
+
+    if (nx < 0 || nx >= 8 || ny < 0 || ny >= 8)
+      continue;
+
+    if (!x_ray_king && is_square_attacked(game, nx, ny, piece->color))
+      continue;
+
+    Piece *target = &game->board[ny * 8 + nx];
+    Move *m = malloc(sizeof(Move));
+    m->x = nx;
+    m->y = ny;
+
+    if (target->type == NO_TYPE) {
+      m->spot = HAS_NONE;
+      moves[j++] = m;
+    } else if (x_ray_king && target->type == KING) {
+      m->spot = HAS_NONE;
+      moves[j++] = m;
+    } else {
+      m->spot = (target->color != piece->color) ? HAS_ENEMY : HAS_SELF;
+      moves[j++] = m;
+    }
+  }
+
+  // castling
+  if (!x_ray_king && !piece->moved && !is_in_check(game, piece->color)) {
+    int row = piece->y;
+
+    Piece *rook_ks = &game->board[row * 8 + 7];
+    if (rook_ks->isAlive && rook_ks->type == ROOK &&
+        rook_ks->color == piece->color && !rook_ks->moved) {
+      bool path_clear = !game->board[row * 8 + 5].isAlive &&
+                        !game->board[row * 8 + 6].isAlive;
+      bool path_safe = !is_square_attacked(game, 5, row, piece->color) &&
+                       !is_square_attacked(game, 6, row, piece->color);
+      if (path_clear && path_safe) {
+        Move *m = malloc(sizeof(Move));
+        m->x = 6;
+        m->y = row;
+        m->spot = HAS_NONE;
+        moves[j++] = m;
+      }
+    }
+
+    Piece *rook_qs = &game->board[row * 8 + 0];
+    if (rook_qs->isAlive && rook_qs->type == ROOK &&
+        rook_qs->color == piece->color && !rook_qs->moved) {
+      bool path_clear = !game->board[row * 8 + 1].isAlive &&
+                        !game->board[row * 8 + 2].isAlive &&
+                        !game->board[row * 8 + 3].isAlive;
+      bool path_safe = !is_square_attacked(game, 2, row, piece->color) &&
+                       !is_square_attacked(game, 3, row, piece->color);
+      if (path_clear && path_safe) {
+        Move *m = malloc(sizeof(Move));
+        m->x = 2;
+        m->y = row;
+        m->spot = HAS_NONE;
+        moves[j++] = m;
+      }
+    }
+  }
+
   return moves;
 }
 
@@ -208,19 +275,6 @@ Move **get_pawn_attack_moves(Game *game, Piece *piece) {
   return moves;
 }
 
-bool is_move_legal(Game *game, Piece *piece, int tx, int ty) {
-  PieceColor color = piece->color;
-  Piece board_copy[64];
-  memcpy(board_copy, game->board, sizeof(board_copy));
-
-  move_piece(game, piece, tx, ty);
-  bool in_check = is_in_check(game, color);
-
-  memcpy(game->board, board_copy, sizeof(board_copy));
-
-  return !in_check;
-}
-
 Move **get_possible_move(Game *game, Piece *piece) {
   Move **moves;
   switch (piece->type) {
@@ -233,9 +287,12 @@ Move **get_possible_move(Game *game, Piece *piece) {
   case ROOK:
   case BISHOP:
   case QUEEN:
-  case KING:
-    moves = get_moves_rbq(game, piece, false);
+    moves = get_moves_rbq(game, piece);
     break;
+  case KING:
+    moves = get_king_moves(game, piece, false);
+    break;
+
   default:
     return NULL;
   }

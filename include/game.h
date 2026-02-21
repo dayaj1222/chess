@@ -10,7 +10,7 @@ typedef enum { WHITE, BLACK, NO_COLOR } PieceColor;
 
 typedef enum { HAS_ENEMY, HAS_SELF, HAS_NONE } MoveType;
 
-typedef enum { MENU, PLAYING, GAME_OVER } Scene;
+typedef enum { MENU, PLAYING, GAME_OVER, PROMOTING } Scene;
 
 typedef struct {
   int x;
@@ -51,8 +51,13 @@ typedef struct {
   Piece *selected_piece;
   Move **possible_moves;
 
+  SDL_Texture *textures[2][6];
+
   bool is_white_checked;
   bool is_black_checked;
+
+  bool stalemate;
+  PieceColor won;
 } Game;
 
 #endif

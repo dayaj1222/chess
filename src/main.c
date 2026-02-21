@@ -9,6 +9,7 @@
 #include "../include/game.h"
 #include "../include/input.h"
 #include "../include/renderer.h"
+#include "../include/update/move_gen.h"
 #include "../include/update/update.h"
 
 #define WIDTH 800
@@ -42,6 +43,9 @@ int main(void) {
   game->selected_piece = NULL;
   game->turn = WHITE;
 
+  game->stalemate = false;
+  game->won = NO_COLOR;
+
   if (init_game(game) != SDL_APP_CONTINUE)
     return EXIT_FAILURE;
 
@@ -61,6 +65,7 @@ int main(void) {
     SDL_RenderPresent(game->renderer);
 
     frame_time = SDL_GetTicks() - frame_start;
+
     if (frame_time < FRAME_DELAY)
       SDL_Delay(FRAME_DELAY - frame_time);
   }
@@ -88,7 +93,7 @@ static void handle_events(Game *game) {
 
 static void cleanup(Game *game) {
   if (game->possible_moves)
-    free(game->possible_moves);
+    free_possible_moves(game->possible_moves);
 
   SDL_DestroyRenderer(game->renderer);
   SDL_DestroyWindow(game->window);

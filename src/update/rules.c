@@ -1,4 +1,5 @@
 #include "../../include/update/rules.h"
+#include "../../include/update/move_exec.h"
 #include "../../include/update/move_gen.h"
 #include <stdbool.h>
 #include <stdlib.h>
@@ -11,14 +12,29 @@ void update_check_state(Game *game) {
   game->is_black_checked = is_in_check(game, BLACK);
 }
 
+bool is_move_legal(Game *game, Piece *piece, int tx, int ty) {
+  PieceColor color = piece->color;
+  Piece board_copy[64];
+  memcpy(board_copy, game->board, sizeof(board_copy));
+
+  apply_move(game, piece, tx, ty);
+  bool in_check = is_in_check(game, color);
+
+  memcpy(game->board, board_copy, sizeof(board_copy));
+
+  return !in_check;
+}
+
 static Move **get_attacked_squares(Game *game, Piece *piece) {
   Move **attacked_moves = NULL;
   switch (piece->type) {
   case KING:
+    attacked_moves = get_king_moves(game, piece, true);
+    break;
   case QUEEN:
   case ROOK:
   case BISHOP:
-    attacked_moves = get_moves_rbq(game, piece, true);
+    attacked_moves = get_moves_rbq(game, piece);
     break;
   case KNIGHT:
     attacked_moves = get_knight_moves(game, piece);
@@ -63,5 +79,29 @@ bool is_in_check(Game *game, PieceColor color) {
   return false;
 }
 
-bool is_checkmate(Game *game, PieceColor color);
-bool is_stalemate(Game *game, PieceColor color);
+bool has_no_legal_moves(Game *game, PieceColor color) {
+  for (int i = 0; i < BOARD_SIZE; i++) {
+    Piece *p = &game->board[i];
+    if (!p->isAlive || p->color != color)
+      continue;
+    Move **possible_moves = get_possible_move(game, p);
+    if (!possible_moves)
+      continue;
+    for (int j = 0; j < MAX_MOVES; j++) {
+      if (!possible_moves[j] || possible_moves[j]->spot == HAS_SELF)
+        break;
+      free_possible_moves(possible_moves);
+      return false;
+    }
+    free_possible_moves(possible_moves);
+  }
+  return true;
+}
+
+bool is_checkmate(Game *game, PieceColor color) {
+  return is_in_check(game, color) && has_no_legal_moves(game, color);
+}
+
+bool is_stalemate(Game *game, PieceColor color) {
+  return !is_in_check(game, color) && has_no_legal_moves(game, color);
+}

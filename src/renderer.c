@@ -13,6 +13,10 @@ static void draw_board(SDL_Renderer *renderer);
 static void draw_hint(SDL_Renderer *renderer, const Move *move);
 static void draw_hints(Game *game);
 
+SDL_Texture *get_texture(Game *game, PiecesType type, PieceColor color) {
+  return game->textures[color][type];
+}
+
 void draw_board(SDL_Renderer *renderer) {
   SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
 
@@ -69,10 +73,107 @@ static void draw_hints(Game *game) {
   }
 }
 
+static void draw_promotion_menu(Game *game) {
+
+  if (game->selected_piece == NULL) {
+    return;
+  }
+  int panel_size = 400;
+  int panel_x = (800 - panel_size) / 2;
+  int panel_y = (800 - panel_size) / 2;
+  int sprite_size = 150;
+  int padding = (panel_size - sprite_size * 2) / 3;
+
+  SDL_FRect panel = {panel_x, panel_y, panel_size, panel_size};
+  SDL_SetRenderDrawColor(game->renderer, 26, 26, 26, 255);
+  SDL_RenderFillRect(game->renderer, &panel);
+  SDL_SetRenderDrawColor(game->renderer, 220, 220, 220, 255);
+  SDL_RenderRect(game->renderer, &panel);
+
+  PiecesType types[4] = {QUEEN, ROOK, BISHOP, KNIGHT};
+  SDL_FRect spots[4] = {
+      {panel_x + padding, panel_y + padding, sprite_size, sprite_size},
+      {panel_x + padding * 2 + sprite_size, panel_y + padding, sprite_size,
+       sprite_size},
+      {panel_x + padding, panel_y + padding * 2 + sprite_size, sprite_size,
+       sprite_size},
+      {panel_x + padding * 2 + sprite_size, panel_y + padding * 2 + sprite_size,
+       sprite_size, sprite_size},
+  };
+
+  for (int i = 0; i < 4; i++) {
+    SDL_Texture *t = get_texture(game, types[i], game->selected_piece->color);
+    SDL_RenderTexture(game->renderer, t, NULL, &spots[i]);
+  }
+}
+
+void draw_game_over(Game *game) {
+  // dark transparent overlay
+  SDL_SetRenderDrawColor(game->renderer, 0, 0, 0, 150);
+  SDL_FRect overlay = {0, 0, 800, 800};
+  SDL_RenderFillRect(game->renderer, &overlay);
+
+  // panel
+  int panel_size = 300;
+  int panel_x = (800 - panel_size) / 2;
+  int panel_y = (800 - panel_size) / 2;
+  SDL_FRect panel = {panel_x, panel_y, panel_size, panel_size};
+  SDL_SetRenderDrawColor(game->renderer, 26, 26, 26, 255);
+  SDL_RenderFillRect(game->renderer, &panel);
+  SDL_SetRenderDrawColor(game->renderer, 220, 220, 220, 255);
+  SDL_RenderRect(game->renderer, &panel);
+
+  // winner king sprite centered in panel
+
+  if (game->won != NO_COLOR) {
+    SDL_Texture *winner = get_texture(game, KING, game->won);
+    SDL_Texture *loser =
+        get_texture(game, KING, game->won == WHITE ? BLACK : WHITE);
+    // winner king larger in center
+    SDL_FRect wr = {panel_x + 75, panel_y + 75, 150, 150};
+    // loser king smaller, bottom corner, slightly faded
+    SDL_FRect lr = {panel_x + 190, panel_y + 190, 80, 80};
+    SDL_RenderTexture(game->renderer, winner, NULL, &wr);
+    SDL_SetTextureAlphaMod(loser, 100);
+    SDL_RenderTexture(game->renderer, loser, NULL, &lr);
+    SDL_SetTextureAlphaMod(loser, 255); // reset alpha
+  } else if (game->stalemate) {
+
+    SDL_Texture *wk = get_texture(game, KING, WHITE);
+    SDL_Texture *bk = get_texture(game, KING, BLACK);
+    SDL_SetTextureAlphaMod(wk, 180);
+    SDL_SetTextureAlphaMod(bk, 180);
+    SDL_FRect wr = {panel_x + 40, panel_y + 75, 100, 100};
+    SDL_FRect br = {panel_x + 160, panel_y + 75, 100, 100};
+    SDL_RenderTexture(game->renderer, wk, NULL, &wr);
+    SDL_RenderTexture(game->renderer, bk, NULL, &br);
+    SDL_SetTextureAlphaMod(wk, 255);
+    SDL_SetTextureAlphaMod(bk, 255);
+  }
+};
+
 bool draw(Game *game) {
-  draw_board(game->renderer);
-  draw_pieces(game);
-  draw_hints(game);
+  switch (game->current_scene) {
+
+  case PROMOTING:
+    draw_board(game->renderer);
+    draw_pieces(game);
+    draw_promotion_menu(game);
+    break;
+  case PLAYING:
+    draw_board(game->renderer);
+    draw_pieces(game);
+    draw_hints(game);
+    break;
+  case GAME_OVER:
+    draw_board(game->renderer);
+    draw_pieces(game);
+    draw_game_over(game);
+    break;
+  case MENU:
+    break;
+  }
+
   return true;
 }
 
@@ -93,24 +194,31 @@ void init_board(Game *game) {
   }
 
   /* Load textures */
-  SDL_Texture *textures[2][6];
 
-  textures[BLACK][PAWN] = load_texture(game->renderer, "sprites/pawn-b.bmp");
-  textures[WHITE][PAWN] = load_texture(game->renderer, "sprites/pawn-w.bmp");
-  textures[BLACK][ROOK] = load_texture(game->renderer, "sprites/rook-b.bmp");
-  textures[WHITE][ROOK] = load_texture(game->renderer, "sprites/rook-w.bmp");
-  textures[BLACK][KNIGHT] =
+  game->textures[BLACK][PAWN] =
+      load_texture(game->renderer, "sprites/pawn-b.bmp");
+  game->textures[WHITE][PAWN] =
+      load_texture(game->renderer, "sprites/pawn-w.bmp");
+  game->textures[BLACK][ROOK] =
+      load_texture(game->renderer, "sprites/rook-b.bmp");
+  game->textures[WHITE][ROOK] =
+      load_texture(game->renderer, "sprites/rook-w.bmp");
+  game->textures[BLACK][KNIGHT] =
       load_texture(game->renderer, "sprites/knight-b.bmp");
-  textures[WHITE][KNIGHT] =
+  game->textures[WHITE][KNIGHT] =
       load_texture(game->renderer, "sprites/knight-w.bmp");
-  textures[BLACK][BISHOP] =
+  game->textures[BLACK][BISHOP] =
       load_texture(game->renderer, "sprites/bishop-b.bmp");
-  textures[WHITE][BISHOP] =
+  game->textures[WHITE][BISHOP] =
       load_texture(game->renderer, "sprites/bishop-w.bmp");
-  textures[BLACK][QUEEN] = load_texture(game->renderer, "sprites/queen-b.bmp");
-  textures[WHITE][QUEEN] = load_texture(game->renderer, "sprites/queen-w.bmp");
-  textures[BLACK][KING] = load_texture(game->renderer, "sprites/king-b.bmp");
-  textures[WHITE][KING] = load_texture(game->renderer, "sprites/king-w.bmp");
+  game->textures[BLACK][QUEEN] =
+      load_texture(game->renderer, "sprites/queen-b.bmp");
+  game->textures[WHITE][QUEEN] =
+      load_texture(game->renderer, "sprites/queen-w.bmp");
+  game->textures[BLACK][KING] =
+      load_texture(game->renderer, "sprites/king-b.bmp");
+  game->textures[WHITE][KING] =
+      load_texture(game->renderer, "sprites/king-w.bmp");
 
   PiecesType back_rank[BOARD_SIZE] = {ROOK, KNIGHT, BISHOP, QUEEN,
                                       KING, BISHOP, KNIGHT, ROOK};
@@ -120,28 +228,28 @@ void init_board(Game *game) {
     int idx = i;
     game->board[idx].type = back_rank[i];
     game->board[idx].color = BLACK;
-    game->board[idx].sprite = textures[BLACK][back_rank[i]];
+    game->board[idx].sprite = game->textures[BLACK][back_rank[i]];
     game->board[idx].isAlive = true;
 
     /* Black pawns */
     idx = i + 8;
     game->board[idx].type = PAWN;
     game->board[idx].color = BLACK;
-    game->board[idx].sprite = textures[BLACK][PAWN];
+    game->board[idx].sprite = game->textures[BLACK][PAWN];
     game->board[idx].isAlive = true;
 
     /* White pawns */
     idx = i + 48;
     game->board[idx].type = PAWN;
     game->board[idx].color = WHITE;
-    game->board[idx].sprite = textures[WHITE][PAWN];
+    game->board[idx].sprite = game->textures[WHITE][PAWN];
     game->board[idx].isAlive = true;
 
     /* White back rank */
     idx = i + 56;
     game->board[idx].type = back_rank[i];
     game->board[idx].color = WHITE;
-    game->board[idx].sprite = textures[WHITE][back_rank[i]];
+    game->board[idx].sprite = game->textures[WHITE][back_rank[i]];
     game->board[idx].isAlive = true;
   }
 }
